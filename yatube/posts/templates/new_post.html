@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}
-    {% if form.instance.author %}
+    {% if post %}
         Редактировать запись
     {% else %}
         Добавить запись
@@ -13,7 +13,7 @@
     <div class="col-md-8 p-5">
         <div class="card">
             <div class="card-header">
-                {% if form.instance.author %}
+                {% if post %}
                     Редактировать запись
                 {% else %}
                     Добавить запись
@@ -22,8 +22,8 @@
             <div class="card-body">
 
                 <form method="post" action=
-                {% if form.instance.author %}
-                    "{% url 'post_edit' username=form.instance.author.username post_id=form.instance.id %}"
+                {% if post %}
+                    "{% url 'post_edit' username=post.author.username post_id=post.id %}"
                 {% else %}
                     "{% url 'new_post' %}"
                 {% endif %}>
@@ -50,7 +50,7 @@
 
                     <div class="col-md-6 offset-md-4">              
                         <button type="submit" class="btn btn-primary">
-                            {% if form.instance.author %}
+                            {% if post %}
                                 Сохранить
                             {% else %}
                                 Добавить
