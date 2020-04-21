@@ -34,34 +34,9 @@
 
         <div class="col-md-9">                
 
-            <!-- Начало блока с отдельным постом --> 
             {% for post in page %}
-                <div class="card mb-3 mt-1 shadow-sm">
-                    <div class="card-body">
-                        <p class="card-text">
-                            <!-- Ссылка на страницу автора в атрибуте href; username автора в тексте ссылки -->
-                            <a href="{% url 'profile' username=author.username %}"><strong class="d-block text-gray-dark">@{{ author.username }}</strong></a>
-                            <!-- Текст поста -->
-                            {{ post.text|linebreaksbr }}
-                        </p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="btn-group ">
-                                <!-- Ссылка на страницу записи в атрибуте href-->
-                                <a class="btn btn-sm text-muted" href="{% url 'post' username=author.username post_id=post.id %}" role="button">Добавить комментарий</a>
-                                <!-- Ссылка на редактирование, показывается только автору записи -->
-                                {% if request.user == author %}
-                                    <a class="btn btn-sm text-muted" href="{% url 'post_edit' username=author.username post_id=post.id %}" role="button">Редактировать</a>
-                                {% endif %}
-                            </div>
-                            <!-- Дата публикации  -->
-                            <small class="text-muted">{{ post.pub_date|date:"d M Y г. G:i" }}</small>
-                        </div>
-                    </div>
-                </div>
-            <!-- Конец блока с отдельным постом --> 
-            {% endfor %}
-
-            <!-- Остальные посты -->  
+                {% include "post_item.html" with post=post %}
+            {% endfor %} 
 
             <!-- Здесь постраничная навигация паджинатора -->
             {% if page.has_other_pages %}

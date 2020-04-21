@@ -1,26 +1,19 @@
-from django.test import TestCase, Client
+from django.conf import settings
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from .models import Post
+from .models import Post, Group
 
-User = get_user_model()
 
-'''
-Напишите тесты для проверки сценариев:
+User = get_user_model()  
 
-1)После регистрации пользователя создается его персональная страница (profile)
-2)Авторизованный пользователь может опубликовать пост (new)
-3)Неавторизованный посетитель не может опубликовать пост (его редиректит на страницу входа)
-4)После публикации поста новая запись появляется на главной странице сайта (index),
-    на персональной странице пользователя (profile), и на отдельной странице поста (post)
-5)Авторизованный пользователь может отредактировать свой пост и его содержимое изменится на всех связанных страницах
-'''
-
+@override_settings(CACHES=settings.TEST_CACHES)
 class PostsManagementTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="test_username", email="test_mail@yandex.ru", password="test_password")
-        self.post = Post.objects.create(text="It is a text of a test post", author=self.user)
-
+        self.group = Group.objects.create(title='group title', slug='group-slug', description='group description')
+        self.post = Post.objects.create(text="It is a text of a test post", author=self.user, group=self.group)
+        
         self.client = Client()
         self.client.force_login(self.user)
 
@@ -38,7 +31,7 @@ class PostsManagementTest(TestCase):
         #Unauthorised user
         self.client.logout()
 
-        response = self.client.get(new_post_url, follow=True)
+        response = self.client.get(new_post_url)
         self.assertRedirects(
             response=response,
             expected_url=f"{reverse('login')}?next={new_post_url}",
@@ -47,7 +40,7 @@ class PostsManagementTest(TestCase):
     
     def test_post_creation(self):
         text = 'This post was created using a form'
-        self.client.post(reverse('new_post'), {'text' : text}, follow=True)
+        self.client.post(reverse('new_post'), {'text' : text})
         new_post = Post.objects.last()
         self.assertEqual(new_post.text, text, "Post wasn't added to database")
 
@@ -66,7 +59,7 @@ class PostsManagementTest(TestCase):
 
         #Authorized user editing his own post:
         text = 'This post was edited using a form'
-        self.client.post(post_edit_url, {'text' : text}, follow=True)
+        self.client.post(post_edit_url, {'text' : text})
         edited_post = Post.objects.get(text=text)
 
         check_urls = {
@@ -102,3 +95,52 @@ class PostsManagementTest(TestCase):
             expected_url=f"{reverse('login')}?next={post_edit_url}",
             msg_prefix="<post edition> page should redirect unauthorized user to <login> page"
         )
+    
+    def test_image_upload(self):
+        path = "test_data/test_img.jpg"
+        post_edit_url = reverse('post_edit', kwargs={'username': self.user.username, 'post_id' : self.post.id})
+        with open(path, 'rb') as test_img:
+            self.client.post(post_edit_url, {'group' : self.group.id, 'text' : 'new text', 'image' : test_img})
+        
+        check_urls = {
+            'index' : reverse('index'),
+            'group' : reverse('group_page', kwargs={'slug': self.group.slug}),
+            'profile' : reverse('profile', kwargs={'username': self.user.username}),
+            'post' : reverse('post', kwargs={'username': self.user.username, 'post_id' : self.post.id}),
+        }
+        for url in check_urls:
+            response = self.client.get(check_urls[url])
+            self.assertContains(response, '<img', msg_prefix=f"Image doesn't appear in <{url}> page")
+        
+    def test_non_image_upload(self):
+        post_edit_url = reverse('post_edit', kwargs={'username': self.user.username, 'post_id' : self.post.id})
+        with open('manage.py', 'rb') as test_file:
+            self.client.post(post_edit_url, {'text' : 'new text', 'image' : test_file})
+        post = Post.objects.last()
+        with self.assertRaises(ValueError, msg="Post should not contain non-graphic files in its <image> field"):
+            post.image.open()
+    
+    def tearDown(self):
+        posts = Post.objects.all()
+        for post in posts:
+            post.delete()
+
+class TestCachedPages(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="test_username", email="test_mail@yandex.ru", password="test_password")
+        self.group = Group.objects.create(title='group title', slug='group-slug', description='group description')
+        self.post = Post.objects.create(text="It is a text of a test post", author=self.user, group=self.group)
+        
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_cached_page(self):
+        index_url = reverse('index')
+        post_edit_url = reverse('post_edit', kwargs={'username': self.user.username, 'post_id' : self.post.id})
+        response = self.client.get(index_url)
+        self.assertContains(response, self.post.text, msg_prefix="Initial post doesn't appear in <index> page")
+
+        text = 'This post was edited using a form'
+        self.client.post(post_edit_url, {'text' : text})
+        response = self.client.get(index_url)
+        self.assertNotContains(response, text, msg_prefix="Cached <index> page shoudn't render new post instantly")
