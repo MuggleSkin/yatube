@@ -3,6 +3,8 @@
 {% block content %}
     {% load cache %}
     {% cache 20 index_page page %}
+        {% include "menu.html" with index=True %}
+
         <h1> Последние обновления на сайте</h1>
 
         {% if page.has_other_pages %}

@@ -28,7 +28,11 @@
     <a
         href="{% url 'profile' username=comment.author.username %}"
         name="comment_{{ comment.id }}"
-        >{{ comment.author.username }}</a>
+        >{{ comment.author.username }}
+    </a>
+    <span class="align-items-right">
+        <small class="text-muted" >{{ comment.created }}</small>
+    </span>
     </h5>
     {{ comment.text }}
 </div>

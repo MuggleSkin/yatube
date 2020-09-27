@@ -1,0 +1,26 @@
+{% extends "base.html" %} 
+{% block title %} Лента новостей {% endblock %}
+{% block content %}
+    {% load cache %}
+    {% cache 20 follow_page page %}
+        {% include "menu.html" with follow=True %}
+
+        {% if paginator.count %}
+            <h1>Последния обновления по вашим подпискам</h1>
+        {% else %}
+            <h2>Подпишитесь на любимых авторов, чтобы следить за обновлениями</h2>
+        {% endif %}
+
+        {% if page.has_other_pages %}
+            {% include "paginator.html" with items=page paginator=paginator%}
+        {% endif %}
+
+        {% for post in page %}
+            {% include "post_item.html" with post=post %}
+        {% endfor %}
+
+        {% if page.has_other_pages %}
+            {% include "paginator.html" with items=page paginator=paginator%}
+        {% endif %}
+    {% endcache %}
+{% endblock %}
